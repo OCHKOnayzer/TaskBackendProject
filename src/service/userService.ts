@@ -14,6 +14,13 @@ interface ReturnItem {
     refreshToken: string;
 }
 
+type UserDto = { 
+    _id: Types.ObjectId;
+    email: string;
+    username: string;
+    password: string;
+}
+
 class UserService {
     static async registration(username: string, email: string, password: string): Promise<ReturnItem> {
         try {
@@ -123,31 +130,73 @@ class UserService {
         }
     }
 
-    static async UpdateUserData(UserId:Types.ObjectId,username:string,password:string,email:string){ 
-        try{ 
-
+    static async UpdateUserData(UserId: Types.ObjectId, username: string, password: string, email: string) { 
+        try { 
             const FindUser = await userModel.findById(UserId);
-
             if (!FindUser) {
                 throw ApiError.BadRequest('Пользователь не найден'); 
             } 
+    
+            let shouldUpdateToken = false;
+    
+            if(username){ 
 
-            if(FindUser.username !== username){ 
-                FindUser.username = username
+                if (FindUser.username !== username) { 
+                    FindUser.username = username;
+                    shouldUpdateToken = true;
+                }
+
+                const FindUserUnic = await userModel.findOne({username:username})
+
+                if(FindUserUnic){ 
+                    throw ApiError.BadRequest(`Пользователь ${username} уже существует`);
+                }
             }
 
-            if(FindUser.email !== email){ 
-                FindUser.email = email
+
+            if(email){ 
+                if (FindUser.email !== email) { 
+                    FindUser.email = email;
+                    shouldUpdateToken = true;
+                }
+
+                const FindEamilUnic = await userModel.findOne({email:email})
+
+                if(FindEamilUnic){ 
+                    throw ApiError.BadRequest(`Почта ${email} уже существует`);
+                }
+            }
+    
+            if (password) {
+                const hashPassword = await bcrypt.hash(password, 10);
+                FindUser.password = hashPassword;
+                shouldUpdateToken = true;
             }
 
-            await FindUser.save()
-
-            return FindUser
-
-        }catch(e:any){ 
+            await FindUser.save();
+            
+            let tokens: { accessToken: string; refreshToken: string } = { accessToken: '', refreshToken: '' };
+           
+            let userdto: UserDto = { _id: FindUser._id, email: FindUser.email, username: FindUser.username,password:FindUser.password }; // Инициализация DTO
+    
+            if (shouldUpdateToken) {
+                
+                tokens = generationTokens({ ...userdto });
+            }
+    
+            const returnItem: ReturnItem = {
+                ...tokens,
+                userdto,
+            };
+    
+            return returnItem; // Возврат обновленного пользователя и токенов
+    
+        } catch (e: any) { 
             throw e;
         }
     }
+    
+    
 
     static async LogOutUser(refreshToken:string){ 
         try{ 

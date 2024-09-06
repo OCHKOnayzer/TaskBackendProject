@@ -3,9 +3,6 @@ import { Types } from "mongoose";
 import TaskService from "../service/taskService";
 import ApiError from "../apiErrors/ApiErrors";
 
-type DeleteType = { 
-    TaskId: Types.ObjectId
-}
 interface CustomRequest extends Request {
     userId?: Types.ObjectId;
 }
@@ -14,18 +11,16 @@ class TaskController{
 
     static async CreateTask(req: CustomRequest, res: Response, next: NextFunction) {
         try {
-            const { taskTitle, taskBody } = req.body;
-            const userId = req.userId;
+            const { titleTask, taskBody,userId } = req.body;
     
             if (!userId) {
                 throw ApiError.BadRequest('Пользователь наваые авторизован');
             }
     
-            const TaskData = await TaskService.CreateTask(taskTitle,taskBody,userId)
+            const TaskData = await TaskService.CreateTask(titleTask,taskBody,userId)
 
         return res.json(TaskData);
         } catch (e) {
-            console.error('Ошибка при создании задачи:', e);
             next(e);
         }
     }
@@ -40,7 +35,7 @@ class TaskController{
             return res.json(TaskData);
 
         }catch(e){ 
-
+            next(e)
         }
     }
 
@@ -48,9 +43,9 @@ class TaskController{
 
         try{ 
 
-            const { TaskId }:DeleteType = req.body;
+            const { taskId,userId } = req.body;
 
-            const TaskData = await TaskService.DeleteTask(TaskId)
+            const TaskData = await TaskService.DeleteTask(taskId,userId)
 
             return res.json(TaskData)
 

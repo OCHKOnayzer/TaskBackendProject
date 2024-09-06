@@ -95,13 +95,13 @@ class UserController {
 
         try{ 
 
-            const { UserId } = req.body;
+            const { userId } = req.body;
 
-            if (!Types.ObjectId.isValid(UserId)) {
+            if (!Types.ObjectId.isValid(userId)) {
                 throw ApiError.BadRequest('Неверный формат UserId');
             }
 
-            const UserData = await UserService.InfoUser(UserId);
+            const UserData = await UserService.InfoUser(userId);
 
             return res.json(UserData)
 
@@ -114,13 +114,13 @@ class UserController {
         
         try{ 
 
-            const { UserId } = req.body;
+            const { userId } = req.body;
 
-            if (!Types.ObjectId.isValid(UserId)) {
+            if (!Types.ObjectId.isValid(userId)) {
                 throw ApiError.BadRequest('Неверный формат UserId');
             }
 
-            const UserData = await UserService.DeleteUser(UserId);
+            const UserData = await UserService.DeleteUser(userId);
 
             return res.json(UserData);
 
@@ -134,9 +134,9 @@ class UserController {
 
         try{ 
 
-            const { UserId,username,password,email } = req.body;
+            const { userId,username,password,email } = req.body;
 
-            const UserData = await UserService.UpdateUserData(UserId,username,password,email)
+            const UserData = await UserService.UpdateUserData(userId,username,password,email)
 
             return res.json(UserData);
 

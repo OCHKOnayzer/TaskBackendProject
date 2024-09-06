@@ -2,15 +2,15 @@ import { Types } from 'mongoose';
 import TaskModel from "../model/TaskModel";
 import TaskDTO from '../dtos/TaskDTO';
 import ApiError from "../apiErrors/ApiErrors";
-import TokenModel from '../model/TokenModel';
+
 interface TaskCreatePromise { 
     newTask: TaskDTO;
 }
 
 class TaskService { 
-    static async CreateTask(taskTitle: string, taskBody: string, userId: Types.ObjectId): Promise<TaskCreatePromise>{ 
+    static async CreateTask(titleTask: string, taskBody: string, userId: Types.ObjectId): Promise<TaskCreatePromise>{ 
         try { 
-            const newTask = new TaskModel({ taskTitle, taskBody, userId }) as any;
+            const newTask = new TaskModel({ titleTask, taskBody, userId }) as any;
 
             await newTask.save();
 
@@ -22,15 +22,19 @@ class TaskService {
             throw e;
         }
     }
-    static async DeleteTask(TaskId:Types.ObjectId){ 
+    static async DeleteTask(TaskId:Types.ObjectId,userId:Types.ObjectId){ 
 
         try{ 
 
-            const FindTask = TaskModel.findById({_id:TaskId});
+            const FindTask = await TaskModel.findById({_id:TaskId});
 
             if(!FindTask){ 
                 throw ApiError.BadRequest(`Таск не найден`);
             }
+
+             if(FindTask.userId !== userId){ 
+                throw ApiError.BadRequest(`Вы можете удалять лишь свои задачи`);
+             }
 
             const DellTask = TaskModel.deleteOne({_id:TaskId});
 
@@ -111,11 +115,11 @@ class TaskService {
                 throw ApiError.BadRequest(`Произошла ошибка при получении данных задачи`);
             }
 
-            if (taskEdit.bodyTask === TaskBody) {
+            if (taskEdit.taskBody === TaskBody) {
                 throw ApiError.BadRequest(`Внесите минимальные изменения в тело задачи`);
             }
 
-            taskEdit.bodyTask = TaskBody;
+            taskEdit.taskBody = TaskBody;
 
             await taskEdit.save();
 

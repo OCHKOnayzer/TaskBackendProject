@@ -10,8 +10,8 @@ const TaskRouter = Router();
 const controller = TaskController
 
 TaskRouter.post('/createTask', ValidationFunction.validateTask,authMiddleware,controller.CreateTask);
-TaskRouter.post('/deleteTask',RegularValidationFunction.validateTaskIdOnly,controller.deleteTask);
-TaskRouter.post('/DeleteAllTasksUser',RegularValidationFunction.validateUserIdOnly,controller.DeleteAllTasksUser);
-TaskRouter.post('/getAllUserTask',RegularValidationFunction.validateUserIdOnly,controller.getAllUserTask);
+TaskRouter.post('/deleteTask',ValidationFunction.validateTaskDell,authMiddleware,controller.deleteTask);
+TaskRouter.post('/DeleteAllTasksUser',RegularValidationFunction.validateUserIdOnly,authMiddleware,controller.DeleteAllTasksUser);
+TaskRouter.post('/getAllUserTask',RegularValidationFunction.validateUserIdOnly,authMiddleware,controller.getAllUserTask);
 
 export default TaskRouter;
