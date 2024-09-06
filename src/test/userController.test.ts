@@ -1,123 +1,171 @@
-// import { Request, Response, NextFunction } from 'express';
-// import sinon from 'sinon';
-// import chai from 'chai';
-// import userController from '../controller/userController';
-// import UserService from '../service/userService';
-// import ApiErrors from '../apiErrors/ApiErrors';
-// const { expect } = chai;
+import { Request, Response, NextFunction } from 'express';
+import { ObjectId } from 'mongodb';
+import userController from '../controller/userController';
+import ApiError from '../apiErrors/ApiErrors';
+import UserService from '../service/userService';
+import userModel from '../model/UserModel';
 
-// describe('UserController', () => {
-//   let req: Partial<Request>;
-//   let res: Partial<Response>;
-//   let next: sinon.SinonSpy;
+jest.mock('../service/userService');
+jest.mock('../model/UserModel');
 
-//   beforeEach(() => {
-//     req = {} as Partial<Request>;
-//     res = {
-//       cookie: sinon.spy(),
-//       json: sinon.spy(),
-//     } as Partial<Response>;
-//     next = sinon.spy();
-//   });
+describe('UserController', () => {
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+  let next: jest.Mock;
 
-//   it('should create a user', async () => {
-//     req.body = { username: 'testuser', password: 'password', email: 'test@example.com' };
+  beforeEach(() => {
+    req = {} as Partial<Request>;
+    res = {
+      cookie: jest.fn(),
+      json: jest.fn(),
+      clearCookie: jest.fn(),
+    } as Partial<Response>;
+    next = jest.fn();
+  });
 
-//     await userController.CreateUsers(req as Request, res as Response, next as NextFunction);
+  it('should create a user', async () => {
+    (UserService.registration as jest.Mock).mockResolvedValue({
+      refreshToken: 'sampleToken',
+    });
 
-//     expect(res.cookie.calledOnce).to.be.true;
-//     expect(res.json.calledWith(sinon.match.object)).to.be.true;
-//   });
+    req.body = { username: 'testuser', password: 'password', email: 'test@example.com' };
 
-//   it('should handle missing fields on user creation', async () => {
-//     req.body = { username: 'testuser', password: '' }; // Email отсутствует
+    await userController.CreateUsers(req as Request, res as Response, next as NextFunction);
 
-//     await userController.CreateUsers(req as Request, res as Response, next as NextFunction);
+    expect(res.cookie).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      refreshToken: 'sampleToken',
+    }));
+  });
 
-//     expect(next.calledOnce).to.be.true;
-//     expect(next.firstCall.args[0]).to.be.instanceOf(ApiErrors.BadRequest);
-//   });
+  it('should handle missing fields on user creation', async () => {
+    req.body = { username: 'testuser', password: '' };
 
-//   it('should login a user', async () => {
-//     req.body = { username: 'testuser', password: 'password' };
+    await userController.CreateUsers(req as Request, res as Response, next as NextFunction);
 
-//     await userController.LoginUser(req as Request, res as Response, next as NextFunction);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(expect.any(ApiError));
+  });
 
-//     expect(res.cookie.calledOnce).to.be.true;
-//     expect(res.json.calledWith(sinon.match.object)).to.be.true;
-//   });
+  it('should login a user', async () => {
+    (UserService.AuthUser as jest.Mock).mockResolvedValue({
+      refreshToken: 'sampleToken',
+    });
 
-//   it('should handle login errors', async () => {
-//     req.body = { username: 'testuser', password: '' }
+    req.body = { username: 'testuser', password: 'password' };
 
-//     await userController.LoginUser(req as Request, res as Response, next as NextFunction);
+    await userController.LoginUser(req as Request, res as Response, next as NextFunction);
 
-//     expect(next.calledOnce).to.be.true;
-//     expect(next.firstCall.args[0]).to.be.instanceOf(ApiErrors.BadRequest);
-//   });
+    expect(res.cookie).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      refreshToken: 'sampleToken',
+    }));
+  });
 
-//   it('should get all users', async () => {
-//     await userController.GetAllUsers(req as Request, res as Response, next as NextFunction);
+  it('should handle login errors', async () => {
+    (UserService.AuthUser as jest.Mock).mockRejectedValue(ApiError.BadRequest('Login failed'));
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
+    req.body = { username: 'testuser', password: '' };
 
-//   it('should log out a user', async () => {
-//     req.body = { refreshToken: 'sampleToken' };
+    await userController.LoginUser(req as Request, res as Response, next as NextFunction);
 
-//     await userController.logOut(req as Request, res as Response, next as NextFunction);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(expect.any(ApiError));
+  });
 
-//     expect(res.clearCookie.calledOnce).to.be.true;
-//     expect(res.json.calledWith(sinon.match.object)).to.be.true;
-//   });
+  it('should get all users', async () => {
+    (userModel.find as jest.Mock).mockResolvedValue([{ _id: '1', username: 'testuser' }]);
 
-//   it('should get user info', async () => {
-//     req.body = { userId: 'validUserId' }; // Замените на валидный ObjectId
+    await userController.GetAllUsers(req as Request, res as Response, next as NextFunction);
 
-//     await userController.GetUserInfo(req as Request, res as Response, next as NextFunction);
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith([{ _id: '1', username: 'testuser' }]);
+  });
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
+  it('should log out a user', async () => {
+    (UserService.LogOutUser as jest.Mock).mockResolvedValue({});
 
-//   it('should handle invalid userId in get user info', async () => {
-//     req.body = { userId: 'invalidUserId' };
+    req.body = { refreshToken: 'sampleToken' };
 
-//     await userController.GetUserInfo(req as Request, res as Response, next as NextFunction);
+    await userController.logOut(req as Request, res as Response, next as NextFunction);
 
-//     expect(next.calledOnce).to.be.true;
-//     expect(next.firstCall.args[0]).to.be.instanceOf(ApiErrors.BadRequest);
-//   });
+    expect(res.clearCookie).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(expect.any(Object));
+  });
 
-//   it('should delete a user', async () => {
-//     req.body = { userId: 'validUserId' }; // Замените на валидный ObjectId
+  it('should get user info', async () => {
+    const fakeId = new ObjectId().toString();
+    (UserService.InfoUser as jest.Mock).mockResolvedValue({ _id: fakeId, username: 'testuser' });
 
-//     await userController.DeleteUser(req as Request, res as Response, next as NextFunction);
+    req.body = { userId: fakeId };
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
+    await userController.GetUserInfo(req as Request, res as Response, next as NextFunction);
 
-//   it('should update user data', async () => {
-//     req.body = { userId: 'validUserId', username: 'newuser', password: 'newpassword', email: 'new@example.com' }; // Замените на валидный ObjectId
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ _id: fakeId, username: 'testuser' });
+  });
 
-//     await userController.UpdateUsers(req as Request, res as Response, next as NextFunction);
+  it('should handle invalid userId in get user info', async () => {
+    (UserService.InfoUser as jest.Mock).mockRejectedValue(ApiError.BadRequest('Invalid userId'));
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
+    req.body = { userId: 'invalidUserId' };
 
-//   it('should update user image file', async () => {
-//     req.body = { userId: 'validUserId' }; // Замените на валидный ObjectId
-//     req.file = { filename: 'image.png' }; // Симулируем файл
+    await userController.GetUserInfo(req as Request, res as Response, next as NextFunction);
 
-//     await userController.UpdateUserImageFile(req as CustomRequestFile, res as Response, next as NextFunction);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(expect.any(ApiError));
+  });
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
+  it('should delete a user', async () => {
+    const fakeId = new ObjectId().toString();
+    (UserService.DeleteUser as jest.Mock).mockResolvedValue({ message: 'User deleted' });
 
-//   it('should update image base64', async () => {
-//     req.body = { userId: 'validUserId', ImagePath: 'base64ImageString' }; // Замените на валидный ObjectId и путь
+    req.body = { userId: fakeId };
 
-//     await userController.UpdateImageBase64(req as Request, res as Response, next as NextFunction);
+    await userController.DeleteUser(req as Request, res as Response, next as NextFunction);
 
-//     expect(res.json.calledOnce).to.be.true;
-//   });
-// });
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ message: 'User deleted' });
+  });
+
+  it('should update user data', async () => {
+    const fakeId = new ObjectId().toString();
+    (UserService.UpdateUserData as jest.Mock).mockResolvedValue({});
+
+    req.body = { userId: fakeId, username: 'newuser', password: 'newpassword', email: 'new@example.com' };
+
+    await userController.UpdateUsers(req as Request, res as Response, next as NextFunction);
+
+    expect(res.json).toHaveBeenCalledTimes(1);
+  });
+
+  it('should update image file', async () => {
+    const fakeId = new ObjectId().toString();
+    (UserService.UpdateImageFile as jest.Mock).mockResolvedValue({});
+
+    req.body = { userId: fakeId };
+    req.file = {
+      fieldname: 'file',
+      originalname: 'image.png',
+      encoding: '7bit',
+      mimetype: 'image/png',
+      buffer: Buffer.from(''),
+      size: 0,
+    } as any;
+
+    await userController.UpdateUserImageFile(req as any, res as Response, next as NextFunction);
+
+    expect(res.json).toHaveBeenCalledTimes(1);
+  });
+
+  it('should update image base64', async () => {
+    const fakeId = new ObjectId().toString();
+    (UserService.UpdateImageBase64 as jest.Mock).mockResolvedValue({});
+
+    req.body = { userId: fakeId, ImagePath: 'base64ImageString' };
+
+    await userController.UpdateImageBase64(req as Request, res as Response, next as NextFunction);
+
+    expect(res.json).toHaveBeenCalledTimes(1);
+  });
+});

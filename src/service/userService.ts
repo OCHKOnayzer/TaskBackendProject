@@ -177,7 +177,7 @@ class UserService {
             
             let tokens: { accessToken: string; refreshToken: string } = { accessToken: '', refreshToken: '' };
            
-            let userdto: UserDto = { _id: FindUser._id, email: FindUser.email, username: FindUser.username,password:FindUser.password }; // Инициализация DTO
+            let userdto: UserDto = { _id: FindUser._id, email: FindUser.email, username: FindUser.username,password:FindUser.password };
     
             if (shouldUpdateToken) {
                 
@@ -189,7 +189,7 @@ class UserService {
                 userdto,
             };
     
-            return returnItem; // Возврат обновленного пользователя и токенов
+            return returnItem;
     
         } catch (e: any) { 
             throw e;
